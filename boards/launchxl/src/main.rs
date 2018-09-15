@@ -16,6 +16,9 @@ use cc26x2::prcm;
 #[macro_use]
 pub mod io;
 
+#[allow(dead_code)]
+mod i2c_tests;
+
 // How should the kernel respond when a process faults.
 const FAULT_RESPONSE: kernel::procs::FaultResponse = kernel::procs::FaultResponse::Panic;
 
@@ -267,6 +270,8 @@ pub unsafe fn reset_handler() {
         &mut PROCESSES,
         FAULT_RESPONSE,
     );
+
+    i2c_tests::i2c_accel_test();
 
     kernel::main(
         &launchxl,

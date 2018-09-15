@@ -2,7 +2,7 @@
 
 use core::cmp;
 use kernel::common::cells::{MapCell, OptionalCell};
-use kernel::common::registers::{ReadOnly, ReadWrite, WriteOnly};
+use kernel::common::regs::{ReadOnly, ReadWrite, WriteOnly};
 use kernel::common::StaticRef;
 use kernel::hil::i2c;
 
@@ -13,7 +13,7 @@ use prcm;
 /// The module allows us to hide construction of these internal types since arbitrarily creating
 /// them can have safety consequences.
 mod regs {
-    use kernel::common::registers::{ReadOnly, WriteOnly};
+    use kernel::common::regs::{ReadOnly, WriteOnly};
     /// Models the `mctrl` and `mstat` registers, which occupy the same address, but have completely
     /// different meanings for the same bits.
     ///

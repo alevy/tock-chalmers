@@ -12,14 +12,28 @@ use core::{mem, ptr};
 /// `Option` wrapped in a `RefCell` --- attempts to take the value from inside a
 /// `MapCell` may fail by returning `None`.
 pub struct MapCell<T> {
-    val: UnsafeCell<T>,
+    val: UnsafeCell<U<T>>,
     occupied: Cell<bool>,
 }
 
+// This allows us to mimic `mem::uninitialized` in a way that can be marked `const`.
+//
+// Specifically, we just want to allocate some memory the size of some
+// particular `T` and we don't care what's there---this happens to not be
+// marked `const` in the core library right now since it's an LLVM intrinsic.
+//
+// The `occupied` field of the MapCell tracks whether it is valid to access the
+// `some` variant of this union.
+#[allow(unions_with_drop_fields)]
+union U<T> {
+    none: (),
+    some: T,
+}
+
 impl<T> MapCell<T> {
-    pub fn empty() -> MapCell<T> {
+    pub const fn empty() -> MapCell<T> {
         MapCell {
-            val: unsafe { mem::uninitialized() },
+            val: UnsafeCell::new(U { none: () }),
             occupied: Cell::new(false),
         }
     }
@@ -27,7 +41,7 @@ impl<T> MapCell<T> {
     /// Creates a new `MapCell` containing `value`
     pub const fn new(value: T) -> MapCell<T> {
         MapCell {
-            val: UnsafeCell::new(value),
+            val: UnsafeCell::new(U { some: value }),
             occupied: Cell::new(true),
         }
     }
@@ -47,6 +61,9 @@ impl<T> MapCell<T> {
     /// # Examples
     ///
     /// ```
+    /// extern crate tock_cells;
+    /// use tock_cells::map_cell::MapCell;
+    ///
     /// let cell = MapCell::new(1234);
     /// let x = &cell;
     /// let y = &cell;
@@ -59,14 +76,14 @@ impl<T> MapCell<T> {
             return None;
         } else {
             self.occupied.set(false);
-            unsafe { Some(ptr::replace(self.val.get(), mem::uninitialized())) }
+            unsafe { Some(ptr::replace(self.val.get(), mem::uninitialized()).some) }
         }
     }
 
     pub fn put(&self, val: T) {
         self.occupied.set(true);
         unsafe {
-            ptr::write(self.val.get(), val);
+            ptr::write(self.val.get(), U { some: val });
         }
     }
 
@@ -74,7 +91,7 @@ impl<T> MapCell<T> {
     /// empty, the previous value is returned, otherwise `None` is returned.
     pub fn replace(&self, val: T) -> Option<T> {
         if self.is_some() {
-            unsafe { Some(ptr::replace(self.val.get(), val)) }
+            unsafe { Some(ptr::replace(self.val.get(), U { some: val }).some) }
         } else {
             self.put(val);
             None
@@ -88,13 +105,16 @@ impl<T> MapCell<T> {
     /// # Examples
     ///
     /// ```
+    /// extern crate tock_cells;
+    /// use tock_cells::map_cell::MapCell;
+    ///
     /// let cell = MapCell::new(1234);
     /// let x = &cell;
     /// let y = &cell;
     ///
     /// x.map(|value| {
     ///     // We have mutable access to the value while in the closure
-    ///     value += 1;
+    ///     *value += 1;
     /// });
     ///
     /// // After the closure completes, the mutable memory is still in the cell,
@@ -108,7 +128,7 @@ impl<T> MapCell<T> {
         if self.is_some() {
             self.occupied.set(false);
             let valref = unsafe { &mut *self.val.get() };
-            let res = closure(valref);
+            let res = closure(unsafe { &mut valref.some });
             self.occupied.set(true);
             Some(res)
         } else {
@@ -132,7 +152,7 @@ impl<T> MapCell<T> {
         if self.is_some() {
             self.occupied.set(false);
             let valref = unsafe { &mut *self.val.get() };
-            let res = closure(valref);
+            let res = closure(unsafe { &mut valref.some });
             self.occupied.set(true);
             res
         } else {
