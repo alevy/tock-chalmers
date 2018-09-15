@@ -1,14 +1,21 @@
-#![feature(asm, concat_idents, const_fn, const_cell_new, try_from)]
+#![feature(asm, const_fn, core_intrinsics, used)]
 #![no_std]
 #![crate_name = "cc26x2"]
 #![crate_type = "rlib"]
-extern crate cc26xx;
 extern crate cortexm4;
 #[allow(unused_imports)]
-#[macro_use(debug)]
+#[macro_use]
 extern crate kernel;
 
+pub mod aon;
 pub mod chip;
 pub mod crt1;
+pub mod gpio;
+//pub mod i2c;
+pub mod peripheral_interrupts;
+pub mod prcm;
+pub mod rtc;
+pub mod trng;
+pub mod uart;
 
 pub use crt1::init;

@@ -5,14 +5,13 @@
 extern crate capsules;
 
 extern crate cc26x2;
-extern crate cc26xx;
 
 #[allow(unused_imports)]
 #[macro_use(debug, debug_gpio, static_init)]
 extern crate kernel;
 
-use cc26xx::aon;
-use cc26xx::prcm;
+use cc26x2::aon;
+use cc26x2::prcm;
 
 #[macro_use]
 pub mod io;
@@ -21,24 +20,24 @@ pub mod io;
 const FAULT_RESPONSE: kernel::procs::FaultResponse = kernel::procs::FaultResponse::Panic;
 
 // Number of concurrent processes this platform supports.
-const NUM_PROCS: usize = 2;
+const NUM_PROCS: usize = 3;
 static mut PROCESSES: [Option<&'static mut kernel::procs::Process<'static>>; NUM_PROCS] =
-    [None, None];
+    [None, None, None];
 
 #[link_section = ".app_memory"]
 // Give half of RAM to be dedicated APP memory
 static mut APP_MEMORY: [u8; 0xA000] = [0; 0xA000];
 
 pub struct Platform {
-    gpio: &'static capsules::gpio::GPIO<'static, cc26xx::gpio::GPIOPin>,
-    led: &'static capsules::led::LED<'static, cc26xx::gpio::GPIOPin>,
-    console: &'static capsules::console::Console<'static, cc26xx::uart::UART>,
-    button: &'static capsules::button::Button<'static, cc26xx::gpio::GPIOPin>,
+    gpio: &'static capsules::gpio::GPIO<'static, cc26x2::gpio::GPIOPin>,
+    led: &'static capsules::led::LED<'static, cc26x2::gpio::GPIOPin>,
+    console: &'static capsules::console::Console<'static, cc26x2::uart::UART>,
+    button: &'static capsules::button::Button<'static, cc26x2::gpio::GPIOPin>,
     alarm: &'static capsules::alarm::AlarmDriver<
         'static,
-        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26x2::rtc::Rtc>,
     >,
-    rng: &'static capsules::rng::SimpleRng<'static, cc26xx::trng::Trng>,
+    rng: &'static capsules::rng::SimpleRng<'static, cc26x2::trng::Trng>,
 }
 
 impl kernel::Platform for Platform {
@@ -58,12 +57,57 @@ impl kernel::Platform for Platform {
     }
 }
 
+unsafe fn configure_pins() {
+    cc26x2::gpio::PORT[0].enable_gpio();
+    cc26x2::gpio::PORT[1].enable_gpio();
+
+    cc26x2::gpio::PORT[2].enable_uart_rx();
+    cc26x2::gpio::PORT[3].enable_uart_tx();
+
+    cc26x2::gpio::PORT[4].enable_i2c_scl();
+    cc26x2::gpio::PORT[5].enable_i2c_sda();
+
+    cc26x2::gpio::PORT[6].enable_gpio(); // Red LED
+    cc26x2::gpio::PORT[7].enable_gpio(); // Green LED
+
+    // SPI MISO cc26x2::gpio::PORT[8]
+    // SPI MOSI cc26x2::gpio::PORT[9]
+    // SPI CLK  cc26x2::gpio::PORT[10]
+    // SPI CS   cc26x2::gpio::PORT[11]
+
+    // PWM      cc26x2::gpio::PORT[12]
+
+    cc26x2::gpio::PORT[13].enable_gpio();
+    cc26x2::gpio::PORT[14].enable_gpio();
+
+    cc26x2::gpio::PORT[15].enable_gpio();
+
+    // unused   cc26x2::gpio::PORT[16]
+    // unused   cc26x2::gpio::PORT[17]
+
+    // PWM      cc26x2::gpio::PORT[18]
+    // PWM      cc26x2::gpio::PORT[19]
+    // PWM      cc26x2::gpio::PORT[20]
+
+    cc26x2::gpio::PORT[21].enable_gpio();
+    cc26x2::gpio::PORT[22].enable_gpio();
+
+    // analog   cc26x2::gpio::PORT[23]
+    // analog   cc26x2::gpio::PORT[24]
+    // analog   cc26x2::gpio::PORT[25]
+    // analog   cc26x2::gpio::PORT[26]
+    // analog   cc26x2::gpio::PORT[27]
+    // analog   cc26x2::gpio::PORT[28]
+    // analog   cc26x2::gpio::PORT[29]
+    // analog   cc26x2::gpio::PORT[30]
+}
+
 #[no_mangle]
 pub unsafe fn reset_handler() {
     cc26x2::init();
 
     // Setup AON event defaults
-    aon::AON_EVENT.setup();
+    aon::AON.setup();
 
     // Power on peripherals (eg. GPIO)
     prcm::Power::enable_domain(prcm::PowerDomain::Peripherals);
@@ -73,45 +117,46 @@ pub unsafe fn reset_handler() {
 
     // Enable the GPIO clocks
     prcm::Clock::enable_gpio();
+    configure_pins();
 
     // LEDs
     let led_pins = static_init!(
         [(
-            &'static cc26xx::gpio::GPIOPin,
+            &'static cc26x2::gpio::GPIOPin,
             capsules::led::ActivationMode
         ); 2],
         [
             (
-                &cc26xx::gpio::PORT[6],
+                &cc26x2::gpio::PORT[6],
                 capsules::led::ActivationMode::ActiveHigh
             ), // Red
             (
-                &cc26xx::gpio::PORT[7],
+                &cc26x2::gpio::PORT[7],
                 capsules::led::ActivationMode::ActiveHigh
             ), // Green
         ]
     );
     let led = static_init!(
-        capsules::led::LED<'static, cc26xx::gpio::GPIOPin>,
+        capsules::led::LED<'static, cc26x2::gpio::GPIOPin>,
         capsules::led::LED::new(led_pins)
     );
 
     // BUTTONS
     let button_pins = static_init!(
-        [(&'static cc26xx::gpio::GPIOPin, capsules::button::GpioMode); 2],
+        [(&'static cc26x2::gpio::GPIOPin, capsules::button::GpioMode); 2],
         [
             (
-                &cc26xx::gpio::PORT[13],
+                &cc26x2::gpio::PORT[13],
                 capsules::button::GpioMode::LowWhenPressed
             ), // Button 2
             (
-                &cc26xx::gpio::PORT[14],
+                &cc26x2::gpio::PORT[14],
                 capsules::button::GpioMode::LowWhenPressed
             ), // Button 1
         ]
     );
     let button = static_init!(
-        capsules::button::Button<'static, cc26xx::gpio::GPIOPin>,
+        capsules::button::Button<'static, cc26x2::gpio::GPIOPin>,
         capsules::button::Button::new(button_pins, kernel::Grant::create())
     );
     for &(btn, _) in button_pins.iter() {
@@ -119,18 +164,17 @@ pub unsafe fn reset_handler() {
     }
 
     // UART
-    cc26xx::uart::UART0.set_pins(3, 2);
     let console = static_init!(
-        capsules::console::Console<cc26xx::uart::UART>,
+        capsules::console::Console<cc26x2::uart::UART>,
         capsules::console::Console::new(
-            &cc26xx::uart::UART0,
+            &cc26x2::uart::UART0,
             115200,
             &mut capsules::console::WRITE_BUF,
             &mut capsules::console::READ_BUF,
             kernel::Grant::create()
         )
     );
-    kernel::hil::uart::UART::set_client(&cc26xx::uart::UART0, console);
+    kernel::hil::uart::UART::set_client(&cc26x2::uart::UART0, console);
     console.initialize();
 
     // Attach the kernel debug interface to this console
@@ -139,67 +183,67 @@ pub unsafe fn reset_handler() {
 
     // Setup for remaining GPIO pins
     let gpio_pins = static_init!(
-        [&'static cc26xx::gpio::GPIOPin; 22],
+        [&'static cc26x2::gpio::GPIOPin; 22],
         [
-            &cc26xx::gpio::PORT[1],
-            &cc26xx::gpio::PORT[5],
-            &cc26xx::gpio::PORT[8],
-            &cc26xx::gpio::PORT[9],
-            &cc26xx::gpio::PORT[10],
-            &cc26xx::gpio::PORT[11],
-            &cc26xx::gpio::PORT[12],
-            &cc26xx::gpio::PORT[15],
-            &cc26xx::gpio::PORT[16],
-            &cc26xx::gpio::PORT[17],
-            &cc26xx::gpio::PORT[18],
-            &cc26xx::gpio::PORT[19],
-            &cc26xx::gpio::PORT[20],
-            &cc26xx::gpio::PORT[21],
-            &cc26xx::gpio::PORT[22],
-            &cc26xx::gpio::PORT[23],
-            &cc26xx::gpio::PORT[24],
-            &cc26xx::gpio::PORT[25],
-            &cc26xx::gpio::PORT[26],
-            &cc26xx::gpio::PORT[27],
-            &cc26xx::gpio::PORT[30],
-            &cc26xx::gpio::PORT[31],
+            &cc26x2::gpio::PORT[1],
+            &cc26x2::gpio::PORT[5],
+            &cc26x2::gpio::PORT[8],
+            &cc26x2::gpio::PORT[9],
+            &cc26x2::gpio::PORT[10],
+            &cc26x2::gpio::PORT[11],
+            &cc26x2::gpio::PORT[12],
+            &cc26x2::gpio::PORT[15],
+            &cc26x2::gpio::PORT[16],
+            &cc26x2::gpio::PORT[17],
+            &cc26x2::gpio::PORT[18],
+            &cc26x2::gpio::PORT[19],
+            &cc26x2::gpio::PORT[20],
+            &cc26x2::gpio::PORT[21],
+            &cc26x2::gpio::PORT[22],
+            &cc26x2::gpio::PORT[23],
+            &cc26x2::gpio::PORT[24],
+            &cc26x2::gpio::PORT[25],
+            &cc26x2::gpio::PORT[26],
+            &cc26x2::gpio::PORT[27],
+            &cc26x2::gpio::PORT[30],
+            &cc26x2::gpio::PORT[31],
         ]
     );
     let gpio = static_init!(
-        capsules::gpio::GPIO<'static, cc26xx::gpio::GPIOPin>,
+        capsules::gpio::GPIO<'static, cc26x2::gpio::GPIOPin>,
         capsules::gpio::GPIO::new(gpio_pins)
     );
     for pin in gpio_pins.iter() {
         pin.set_client(gpio);
     }
 
-    let rtc = &cc26xx::rtc::RTC;
+    let rtc = &cc26x2::rtc::RTC;
     rtc.start();
 
     let mux_alarm = static_init!(
-        capsules::virtual_alarm::MuxAlarm<'static, cc26xx::rtc::Rtc>,
-        capsules::virtual_alarm::MuxAlarm::new(&cc26xx::rtc::RTC)
+        capsules::virtual_alarm::MuxAlarm<'static, cc26x2::rtc::Rtc>,
+        capsules::virtual_alarm::MuxAlarm::new(&cc26x2::rtc::RTC)
     );
     rtc.set_client(mux_alarm);
 
     let virtual_alarm1 = static_init!(
-        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26x2::rtc::Rtc>,
         capsules::virtual_alarm::VirtualMuxAlarm::new(mux_alarm)
     );
     let alarm = static_init!(
         capsules::alarm::AlarmDriver<
             'static,
-            capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26xx::rtc::Rtc>,
+            capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26x2::rtc::Rtc>,
         >,
         capsules::alarm::AlarmDriver::new(virtual_alarm1, kernel::Grant::create())
     );
     virtual_alarm1.set_client(alarm);
 
     let rng = static_init!(
-        capsules::rng::SimpleRng<'static, cc26xx::trng::Trng>,
-        capsules::rng::SimpleRng::new(&cc26xx::trng::TRNG, kernel::Grant::create())
+        capsules::rng::SimpleRng<'static, cc26x2::trng::Trng>,
+        capsules::rng::SimpleRng::new(&cc26x2::trng::TRNG, kernel::Grant::create())
     );
-    cc26xx::trng::TRNG.set_client(rng);
+    cc26x2::trng::TRNG.set_client(rng);
 
     let launchxl = Platform {
         console,

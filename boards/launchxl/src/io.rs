@@ -1,4 +1,4 @@
-use cc26xx;
+use cc26x2;
 use core::fmt::{Arguments, Write};
 use kernel::debug;
 use kernel::hil::led;
@@ -12,7 +12,7 @@ static mut WRITER: Writer = Writer { initialized: false };
 
 impl Write for Writer {
     fn write_str(&mut self, s: &str) -> ::core::fmt::Result {
-        let uart = unsafe { &mut cc26xx::uart::UART0 };
+        let uart = unsafe { &mut cc26x2::uart::UART0 };
         if !self.initialized {
             self.initialized = true;
             uart.init(uart::UARTParams {
@@ -33,11 +33,11 @@ impl Write for Writer {
 #[cfg(not(test))]
 #[lang = "panic_fmt"]
 #[no_mangle]
-pub unsafe extern "C" fn rust_begin_unwind(args: Arguments, file: &'static str, line: u32) -> ! {
+pub unsafe extern "C" fn panic_fmt(args: Arguments, file: &'static str, line: u32) -> ! {
     // 6 = Red led, 7 = Green led
     const LED_PIN: usize = 6;
 
-    let led = &mut led::LedLow::new(&mut cc26xx::gpio::PORT[LED_PIN]);
+    let led = &mut led::LedLow::new(&mut cc26x2::gpio::PORT[LED_PIN]);
     let writer = &mut WRITER;
     debug::panic(led, writer, args, file, line)
 }
