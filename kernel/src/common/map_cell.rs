@@ -1,7 +1,14 @@
 //! Tock specific `MapCell` type for sharing references.
 
 use core::cell::{Cell, UnsafeCell};
-use core::{mem, ptr};
+use core::ptr;
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum State {
+    Occupied,
+    Empty,
+    Borrowed,
+}
 
 /// A mutable memory location that enforces borrow rules at runtime without
 /// possible panics.
@@ -13,7 +20,7 @@ use core::{mem, ptr};
 /// `MapCell` may fail by returning `None`.
 pub struct MapCell<T> {
     val: UnsafeCell<U<T>>,
-    occupied: Cell<bool>,
+    occupied: Cell<State>,
 }
 
 // This allows us to mimic `mem::uninitialized` in a way that can be marked `const`.
@@ -34,7 +41,7 @@ impl<T> MapCell<T> {
     pub const fn empty() -> MapCell<T> {
         MapCell {
             val: UnsafeCell::new(U { none: () }),
-            occupied: Cell::new(false),
+            occupied: Cell::new(State::Empty),
         }
     }
 
@@ -42,16 +49,16 @@ impl<T> MapCell<T> {
     pub const fn new(value: T) -> MapCell<T> {
         MapCell {
             val: UnsafeCell::new(U { some: value }),
-            occupied: Cell::new(true),
+            occupied: Cell::new(State::Borrowed),
         }
     }
 
     pub fn is_none(&self) -> bool {
-        !self.is_some()
+        self.occupied.get() == State::Empty
     }
 
     pub fn is_some(&self) -> bool {
-        self.occupied.get()
+        !self.is_none()
     }
 
     /// Takes the value out of the `MapCell` leaving it empty. If
@@ -72,29 +79,31 @@ impl<T> MapCell<T> {
     /// assert_eq!(y.take(), None);
     /// ```
     pub fn take(&self) -> Option<T> {
-        if self.is_none() {
+        if self.occupied.get() != State::Occupied {
             return None;
         } else {
-            self.occupied.set(false);
-            unsafe { Some(ptr::replace(self.val.get(), mem::uninitialized()).some) }
+            self.occupied.set(State::Empty);
+            unsafe { Some(ptr::replace(self.val.get(), U { none: () }).some) }
         }
     }
 
     pub fn put(&self, val: T) {
-        self.occupied.set(true);
-        unsafe {
-            ptr::write(self.val.get(), U { some: val });
-        }
+        let _ = self.replace(val);
     }
 
     /// Replaces the contents of the `MapCell` with `val`. If the cell was not
     /// empty, the previous value is returned, otherwise `None` is returned.
     pub fn replace(&self, val: T) -> Option<T> {
-        if self.is_some() {
-            unsafe { Some(ptr::replace(self.val.get(), U { some: val }).some) }
-        } else {
-            self.put(val);
-            None
+        match self.occupied.get() {
+            State::Borrowed => None,
+            State::Occupied => {
+                Some(unsafe { ptr::replace(self.val.get(), U { some: val }).some })
+            },
+            State::Empty => {
+                self.occupied.set(State::Occupied);
+                unsafe { ptr::write(self.val.get(), U { some: val }) };
+                None
+            }
         }
     }
 
@@ -125,11 +134,11 @@ impl<T> MapCell<T> {
     where
         F: FnOnce(&mut T) -> R,
     {
-        if self.is_some() {
-            self.occupied.set(false);
+        if self.occupied.get() == State::Occupied {
+            self.occupied.set(State::Borrowed);
             let valref = unsafe { &mut *self.val.get() };
             let res = closure(unsafe { &mut valref.some });
-            self.occupied.set(true);
+            self.occupied.set(State::Occupied);
             Some(res)
         } else {
             None
@@ -149,11 +158,11 @@ impl<T> MapCell<T> {
     where
         F: FnOnce(&mut T) -> Option<R>,
     {
-        if self.is_some() {
-            self.occupied.set(false);
+        if self.occupied.get() == State::Occupied {
+            self.occupied.set(State::Borrowed);
             let valref = unsafe { &mut *self.val.get() };
             let res = closure(unsafe { &mut valref.some });
-            self.occupied.set(true);
+            self.occupied.set(State::Occupied);
             res
         } else {
             None
