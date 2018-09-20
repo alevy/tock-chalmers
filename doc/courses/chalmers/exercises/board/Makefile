@@ -29,7 +29,13 @@ erase:
 	$(PYTHON) cc-bsl.py -e
 
 program: target/$(TARGET)/release/launchxl.bin
-	$(PYTHON) cc-bsl.py -w -v $^
+	$(PYTHON) cc-bsl.py -e -w -v $^
+	arm-none-eabi-objcopy -O binary target/$(TARGET)/release/ccfg target/$(TARGET)/release/ccfg.bin
+	$(PYTHON) cc-bsl.py -a 0x57FA8 -w -v target/$(TARGET)/release/ccfg.bin
+
+ccfg: target/$(TARGET)/release/launchxl.bin
+	arm-none-eabi-objcopy -O binary target/$(TARGET)/release/ccfg target/$(TARGET)/release/ccfg.bin
+	$(PYTHON) cc-bsl.py -a 0x57FA8 -w -v target/$(TARGET)/release/ccfg.bin
 
 program-app: $(APP)
 	$(PYTHON) cc-bsl.py -a 0x30000 -w -v $^
