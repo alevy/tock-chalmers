@@ -19,6 +19,9 @@ pub mod io;
 #[allow(dead_code)]
 mod i2c_tests;
 
+#[allow(dead_code)]
+mod hello_world;
+
 // How should the kernel respond when a process faults.
 const FAULT_RESPONSE: kernel::procs::FaultResponse = kernel::procs::FaultResponse::Panic;
 
@@ -127,12 +130,8 @@ pub unsafe fn reset_handler() {
         [(
             &'static cc26x2::gpio::GPIOPin,
             capsules::led::ActivationMode
-        ); 2],
+        ); 1],
         [
-            (
-                &cc26x2::gpio::PORT[6],
-                capsules::led::ActivationMode::ActiveHigh
-            ), // Red
             (
                 &cc26x2::gpio::PORT[7],
                 capsules::led::ActivationMode::ActiveHigh
@@ -271,7 +270,18 @@ pub unsafe fn reset_handler() {
         FAULT_RESPONSE,
     );
 
-    i2c_tests::i2c_accel_test();
+
+    ///// Chalmers Tutorial ////
+    let hello_alarm = static_init!(
+        capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26x2::rtc::Rtc>,
+        capsules::virtual_alarm::VirtualMuxAlarm::new(mux_alarm)
+    );
+    let hello_world = static_init!(hello_world::HelloWorld<'static, capsules::virtual_alarm::VirtualMuxAlarm<'static, cc26x2::rtc::Rtc>>,
+        hello_world::HelloWorld::new(hello_alarm));
+    hello_alarm.set_client(hello_world);
+
+    hello_world.start();
+    //// Chalmers Tutorial ////
 
     kernel::main(
         &launchxl,
