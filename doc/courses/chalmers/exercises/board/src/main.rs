@@ -129,12 +129,16 @@ pub unsafe fn reset_handler() {
         [(
             &'static cc26x2::gpio::GPIOPin,
             capsules::led::ActivationMode
-        ); 1],
+        ); 2],
         [
             (
                 &cc26x2::gpio::PORT[7],
                 capsules::led::ActivationMode::ActiveHigh
             ), // Green
+            (
+                &cc26x2::gpio::PORT[6],
+                capsules::led::ActivationMode::ActiveHigh
+            ), // Red
         ]
     );
     let led = static_init!(
