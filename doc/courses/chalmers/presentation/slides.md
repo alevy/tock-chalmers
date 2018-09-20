@@ -16,7 +16,7 @@ header-includes:
 
 > aka
 
-<tt><https://goo.gl/s17fy8></tt>
+<tt><https://goo.gl/Fztjgv></tt>
 
 ## Agenda Today
 
@@ -28,9 +28,15 @@ header-includes:
 
 # Part 1: Hardware, tools and development environment
 
-## Hail
+## TI LaunchXL CC26x2
 
 ![](launchxl.jpg)
+
+  * Bluetooth/802.15.14 System on a Chip
+
+  * ARM Cortex-M4 (with a Cortex-M0 for the radio, but we can't access it)
+
+  * 80KB RAM, 352KB Flash
 
 ## Binaries on-board
 
@@ -59,7 +65,7 @@ $ make program
 Program a process in Tock Binary Format[^footnote]:
 
 ```bash
-$ make APP=myapp.tbf program-app
+$ make APP=../app/app.tbf program-app
 ```
 
 Connect to the debug console:
@@ -86,7 +92,7 @@ $ tockloader listen
 
   1. Compile and flash the kernel
 
- - Head to \texttt{<http://bit.ly/2lniNt6>} to get started!
+ - Head to \texttt{<https://goo.gl/4VBvnd>} to get started!
  - \tiny ([https://github.com/alevy/tock-chalmers/blob/master/doc/courses/chalmers/environment.md](https://github.com/alevy/tock-chalmers/blob/master/doc/courses/chalmers/environment.md))
 
 # Part 2: User space
@@ -202,19 +208,17 @@ int ipc_notify_client(int pid);
 2. How would you write an IPC service to print to the console? Which functions
    would the client need to call?
 
-## Hands-on: Write a BLE environment sensing application
+## Hands-on: Write a simple applicaiton
 
   1. Get an application running on LaunchXL
 
-  2. [Print "Hello World" every second](https://github.com/tock/tock/blob/master/doc/courses/sosp/exercises/app/solutions/sosp-repeat-hello.c)
+  2. Print "Hello World" every second
 
-  3. [Extend your app to sample on-board sensors](https://github.com/tock/tock/blob/master/doc/courses/sosp/exercises/app/solutions/sosp-sensors.c)
-
-  3. [Extend your app to report through the `ble-env-sense` service](https://github.com/tock/tock/blob/master/doc/courses/sosp/exercises/app/solutions/sosp-ble-ess.c)
+  3. Toggle an LED every second every second
 
 
- - Head to \texttt{<http://bit.ly/2hgpl8n>} to get started!
- - \tiny ([github.com/tock/tock/blob/master/doc/courses/sosp/application.md](https://github.com/tock/tock/blob/master/doc/courses/sosp/application.md#2-check-your-understanding))
+ - Head to \texttt{<https://goo.gl/hoxAP6>} to get started!
+ - \tiny ([github.com/alevy/tock-chalmers/blob/master/doc/courses/chalmers/application.md](https://github.com/alevy/tock-chalmers/blob/master/doc/courses/chalmers/application.md#2-check-your-understanding))
 
 # Part 3: The kernel
 
@@ -397,15 +401,10 @@ pub trait NineDofClient {
 
   3. Extend your capsule to print "Hello World" every second
 
-  4. Extend your capsule to print light readings every second
+ - Head to \texttt{<https://goo.gl/FXw6xg>} to get started!
+ - \tiny ([github.com/alevy/tock-chalmers/blob/master/doc/courses/chalmers/capsule.md](https://github.com/alevy/tock-chalmers/blob/master/doc/courses/chalmers/capsule.md#2-check-your-understanding))
 
-  5. Extra credit
-
-
- - Head to \texttt{<http://bit.ly/2zLoD9W>} to get started!
- - \tiny ([github.com/tock/tock/blob/master/doc/courses/sosp/capsule.md](https://github.com/tock/tock/blob/master/doc/courses/sosp/capsule.md#2-check-your-understanding))
-
-## Stay in touch!
+##
 
 <https://www.tockos.org>
 
@@ -415,6 +414,3 @@ pub trait NineDofClient {
 
 \#tock on Freenode
 
-### Quick Survey!
-
-- <https://goo.gl/ntxsgX>

@@ -1,9 +1,9 @@
 ---
-location: Shanghai, China
-date: October 28th
+location: Gothenburg, Sweden
+date: September 20th
 ---
 
-# Tock OS Training @ SOSP 2017
+# Tock OS Tutorial @ Octopi Kickoff
 
 This course introduces you to Tock, a secure embedded operating system for sensor
 networks and the Internet of Things. Tock is the first operating system to
@@ -57,7 +57,7 @@ If you choose to install manually, you will need the following software:
 
 1. A local clone of the Tock repository
 
-        $ git clone https://github.com/tock/tock.git
+        $ git clone https://github.com/alevy/tock-chalmers.git
 
 1. [rustup](http://rustup.rs/).
 
