@@ -8,6 +8,8 @@ OPENOCD ?= openocd
 JLINK_EXE ?= JLinkExe
 JLINK_DEVICE ?= cc1312r1f3
 JLINK_ARGUMENTS ?= -device $(JLINK_DEVICE) -if jtag -speed 4000 -AutoConnect 1 -jtagconf -1,-1
+PYTHON ?= python
+APP ?= /you/must/specify/APP/TBF
 
 include ../Makefile.common
 
@@ -22,3 +24,15 @@ flash-jlink: target/$(TARGET)/release/launchxl.bin
 
 flash-ccfg-jlink: target/$(TARGET)/release/launchxlccfg.bin
 	$(JLINK_EXE) $(JLINK_ARGUMENTS) -CommanderScript flash-ccfg.jlink
+
+erase:
+	$(PYTHON) cc-bsl.py -e
+
+program: target/$(TARGET)/release/launchxl.bin
+	$(PYTHON) cc-bsl.py -w -v $^
+
+program-app: $(APP)
+	$(PYTHON) cc-bsl.py -a 0x30000 -w -v $^
+
+erase-app:
+	bash -c "$(PYTHON) cc-bsl.py -a 0x30000 -w -v <(printf '\xFF\xFF\xFF\xFF')"
